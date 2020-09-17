@@ -51,43 +51,45 @@ def find_utr_rating(login_url, url, utr_id, utr_username, utr_password):
         The player id and associated UTR id
         example: (1234: 5678).
     """
-    # try:
-    options = Options()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(options=options)
-    driver.get(login_url)
+    try:
+        options = Options()
+        options.add_argument("--headless")
+        driver = webdriver.Chrome(options=options)
+        driver.get(login_url)
 
-    time.sleep(1)
-    username = driver.find_element_by_id("emailInput")
-    password = driver.find_element_by_id("passwordInput")
-    username.send_keys(utr_username)
-    password.send_keys(utr_password)
-    driver.find_element_by_xpath("//*[@id='myutr-app-body']/div/div/div/div/div[1]/form/div[3]/button").click()
-    time.sleep(5)
-
-    driver.get(url + str(utr_id))
-    time.sleep(5)
-    html = driver.page_source
-    driver.close()
-
-    page = BeautifulSoup(html, "html5lib")
-    item = page.find_all(class_=re.compile("ratingCircle__utrValue__L_LHa"))
-    for id in item:
-        rating_digit = re.findall(r"(\d+)", str(id))[0]
-        rating_decimal = re.findall(r"(.\d+)", str(id))[2]
-        rating = rating_digit + rating_decimal
         time.sleep(1)
-    return utr_id, rating
+        username = driver.find_element_by_id("emailInput")
+        password = driver.find_element_by_id("passwordInput")
+        username.send_keys(utr_username)
+        password.send_keys(utr_password)
+        driver.find_element_by_xpath("//*[@id='myutr-app-body']/div/div/div/div/div[1]/form/div[3]/button").click()
+        time.sleep(5)
+
+        driver.get(url + str(utr_id))
+        time.sleep(5)
+        html = driver.page_source
+        driver.close()
+
+        page = BeautifulSoup(html, "html5lib")
+        item = page.find_all(class_=re.compile("ratingCircle__utrValue__L_LHa"))
+        for id in item:
+            rating_digit = re.findall(r"(\d+)", str(id))[0]
+            rating_decimal = re.findall(r"(.\d+)", str(id))[2]
+            rating = rating_digit + rating_decimal
+            time.sleep(1)
+        return utr_id, rating
+        driver.close()
     
-    # except:
-    #     return utr_id, "error"
-    #     driver.close()
+    except:
+        return utr_id, "error"
+        driver.close()
 
 def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_password):
     import selenium
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
     from selenium.common.exceptions import NoSuchElementException
+    from selenium.common.exceptions import StaleElementReferenceException
     import re
     import time
     """
@@ -130,6 +132,9 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
     except UnboundLocalError:
         return "UnboundLocalError"
         driver.close()
+    except StaleElementReferenceException:
+        return "StaleElementReferenceException"
+        driver.close()
 
     try:
         name = driver.find_element_by_class_name("globalSearch__name__3LzQY")
@@ -145,5 +150,8 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
         driver.close()
     except UnboundLocalError:
         return "UnboundLocalError"
+        driver.close()
+    except StaleElementReferenceException:
+        return "StaleElementReferenceException"
         driver.close()
     

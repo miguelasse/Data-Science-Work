@@ -84,22 +84,22 @@ itf_df["playerName"] = itf_df["playerGivenName"] + " " + itf_df["playerFamilyNam
 itf_utr_rating = []
 for name in tqdm(itf_df["playerName"]):
     itf_utr_rating.append(find_utr_rating_by_name(utr_login, utr_home, name, utr_username, utr_password))
-itf_utr_rating_df = pd.DataFrame(itf_utr_rating, columns=["player_name", "utr_id"])
+print(itf_utr_rating)
+itf_utr_rating_df = pd.DataFrame(itf_utr_rating)
+itf_utr_rating_df_final = itf_utr_rating_df.iloc[:, 0:2]
+
+header = {0:"player_name", 1: "utr_id"}
+itf_utr_rating_df_final = itf_utr_rating_df_final.rename(mapper=header, axis=1)
+print(itf_utr_rating_df_final)
 
 itf_utr_rating_player_id = []
-for utr_id in tqdm(itf_utr_rating_df["utr_id"]):
+for utr_id in tqdm(itf_utr_rating_df_final["utr_id"]):
     itf_utr_rating_player_id.append(find_utr_rating(utr_login, utr_profile, utr_id, utr_username, utr_password))
 
-itf_utr_rating_df = pd.DataFrame(itf_utr_rating_player_id, columns=["utr_id", "utr_rating"])
-
-print(itf_utr_rating_df)
-itf_df_final = pd.merge(itf_df, itf_utr_rating_df, left_index=True, right_index=True)
+itf_utr_rating_player_id_df = pd.DataFrame(itf_utr_rating_player_id, columns=["utr_id", "utr_rating"])
+print(itf_utr_rating_player_id_df)
+itf_df_final = pd.merge(itf_df, itf_utr_rating_player_id_df, left_index=True, right_index=True)
+print(itf_df_final)
 
 itf_df_final.to_csv("itf_df_final.csv", index=False)
 tennis.to_csv("tennis_recruiting_final.csv", index=False)
-# itf_cols = list(itf_df.columns)
-# ['playerId', 'playerFamilyName', 'playerGivenName', 'playerNationalityCode', 'playerNationality', 
-# 'profileLink', 'hiddenPlayer', 'birthYear', 'rankMovement', 'rank', 'rankEqualFlag', 'tournamentsPlayed', 
-# 'points', 'profileImage', 'tournamentsPlayedSingles', 'tournamentsPlayedDoubles', 'pointsRankingSingles', 
-# 'pointsRankingDoubles', 'pointsRankingTotal']
-
