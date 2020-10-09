@@ -1,0 +1,149 @@
+---
+title: "Covid 19 Virus Trends"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+As part of dataquest's data analysis in R path, we are analyzing a COVID-19 dataset using R. We'll be doing so to:
+
+1.  Build the skills and tools of the data analysis worklow of R
+1.  Evaluate the positivity of each country, specifically focusing on the question:
+    **Which countries have had the highest number of positive cases against the number of tests?**
+1. Note that our dataset includes cumulative and daily data mixed together, which we will have to account and filter for in our analysis
+
+## Data Exploration
+
+Let's see the size and shape of our data
+
+```{r}
+library(readr)
+library(tibble)
+library(dplyr)
+covid_df <- read_csv("covid19.csv")
+dim(covid_df)
+```
+
+Here are the column names and first few values of our dataset, as well as data type
+```{r}
+col_names = colnames(covid_df)
+col_names
+head(covid_df)
+glimpse(covid_df)
+```
+
+## Data Filtering
+
+Let's filter our dataset to only include country-level rows, where Province_State is "All States"
+```{r}
+covid_df_all_states <- covid_df %>%
+  filter(Province_State == "All States") %>%
+  select(-Province_State)
+```
+
+Filter to only include daily data
+```{r}
+covid_df_all_states_daily <- covid_df_all_states %>%
+  select(Date, Country_Region, active, hospitalizedCurr, daily_tested, daily_positive)
+```
+
+## Data creation
+
+We also need to create new columns to answer our question: **Which countries have had the highest number of positive cases against the number of tests?**
+
+Let's create a new summary table by country and calculate all their baseline covid statistics
+
+```{r}
+covid_df_all_states_daily_sum <- covid_df_all_states_daily %>%
+  group_by(Country_Region) %>%
+  summarize(
+    tested = sum(daily_tested),
+    positive = sum(daily_positive),
+    active = sum(active),
+    hospitalized = sum(hospitalizedCurr)) %>%
+  arrange(-tested)
+
+glimpse(covid_df_all_states_daily_sum)
+```
+
+Get the top 10 of our results
+```{r}
+covid_top_10 <- head(covid_df_all_states_daily_sum, 10)
+```
+
+Extract the data, name each vector with the associated country, and look at the positivity ratio for the top 10 countries
+```{r}
+countries <- covid_top_10$Country_Region
+tested_cases <- covid_top_10$tested
+positive_cases <- covid_top_10$positive
+active_cases <- covid_top_10$active
+hospitalized_cases <- covid_top_10$hospitalized
+
+names(tested_cases) <- countries
+names(positive_cases) <- countries
+names(active_cases) <- countries
+names(hospitalized_cases) <- countries
+
+positive_cases / tested_cases
+
+positive_tested_top_3 <- c("United Kingdom" = 0.11, "United States" = 0.10, "Turkey" = 0.08)
+```
+
+Create a matrix of the top 3
+```{r}
+united_kingdom <- c(0.11, 1473672, 166909, 0, 0)
+united_states <- c(0.10, 17282363, 1877179, 0, 0)
+turkey <- c(0.08, 2031192, 163941, 2980960, 0)
+
+covid_mat <- rbind(united_kingdom, united_states, turkey)
+names <- c("Ratio", "tested", "positive", "active", "hospitalized")
+colnames(covid_mat) <- names
+
+covid_mat
+```
+
+Create a final summary list of everything with the answer to our question
+```{r}
+question <- "Which countries have had the highest number of positive cases against the number of tests?"
+answer <- c("Positive tested cases" = positive_tested_top_3)
+
+datasets <- list(
+  original = covid_df,
+  allstates = covid_df_all_states,
+  daily = covid_df_all_states_daily,
+  top10 = covid_top_10
+)
+
+matrices <- list(
+  covid_mat
+)
+
+vectors <- list(
+  col_names,
+  countries
+)
+
+data_structure_list <- list(
+  "dataframe" = datasets,
+  "matrix" = matrices,
+  "vector" = vectors
+)
+
+covid_analysis_list <- list(
+  "question" = question,
+  "answer" = answer,
+  "data" = data_structure_list
+)
+
+covid_analysis_list[2]
+```
+
+## Conclusion
+
+Which countries have had the highest number of positive cases against the number of tests?
+
+As we see from our filtering and brief analysis above, the UK, USA and Turkey have the highest positivity rate (i.e., positive cases against the number of tests).
