@@ -1,0 +1,136 @@
+---
+title: "Creating An Efficient Data Analysis Workflow"
+author: "Miguel Asse"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Exploratory Data Analysis
+
+The goal of this analysis is threefold. We'd like to:
+
+1.  Explore our book reviews dataset and see what we can discover from it.
+1.  Do some data cleaning.
+1.  Add some new columns to our data set based on particular criteria.
+1.  Determine the most profitable book based on our data set.
+
+```{r}
+library(readr)
+library(tidyr)
+library(dplyr)
+book_df <- read_csv("book_reviews.csv")
+dim(book_df)
+```
+
+There are 2000 rows and 4 columns in our dataset. 
+
+```{r}
+cols <- colnames(book_df)
+print(cols)
+```
+
+The four columns are
+
+* Book - The book title.
+* Review - A string "Excellent", "Fair", "Poor" of the book.
+* State - The two letter abbreviation of the US state the book is from.
+* Price - The price of the book in num format.
+
+The data type of each column:
+
+```{r}
+for (col in colnames(book_df)) {
+  print(typeof(book_df[[col]]))
+}
+```
+
+The number of unique values in each column:
+
+```{r}
+for (col in colnames(book_df)) {
+  print("unique values in column:")
+  print(col)
+  print(unique(book_df[[col]]))
+  print("")
+}
+```
+
+### Data Cleaning
+
+We can use the below code to remove missing data, and see how much that affects our dataset.
+
+```{r}
+complete_book_df <- book_df %>%
+  filter(!is.na(review))
+dim(complete_book_df)
+```
+
+It removes 206 rows from our data set, overall.
+
+
+Let's now update the "States" column to be consistent, using mutate and case when:
+
+```{r}
+complete_book_df <- complete_book_df %>%
+  mutate(
+    state = case_when(
+      state == "California" ~ "CA",
+      state == "New York" ~ "NY",
+      state == "Florida" ~ "FL",
+      state == "Texas" ~ "TX",
+      TRUE ~ state
+    ) 
+  )
+```
+
+### Data Manipulation
+
+We'll need to convert our reviews to numerical form using another mutate statement:
+
+```{r}
+complete_book_df <- complete_book_df %>%
+  mutate(
+    review_num = case_when(
+      review == "Poor" ~ 1,
+      review == "Fair" ~ 2,
+      review == "Good" ~ 3,
+      review == "Great" ~ 4,
+      review == "Excellent" ~ 5
+    )
+  )
+```
+
+Let's also create a new boolean column to flag if it's a high score or not:
+
+```{r}
+complete_book_df <- complete_book_df %>%
+  mutate(
+    is_high_score = if_else(review_num >= 4, TRUE, FALSE)
+  )
+```
+
+### Data Analysis
+
+We need to determine the "most profitable" book. To determine that, we'll use the number of times the book appears in our dataset (aka the number of time it was purchased), along with the purchase price, to determine the most profitable book.
+
+Profit = # of Times a Book is Sold * The Book Price.
+
+```{r}
+price_summary <- complete_book_df %>%
+  group_by(book) %>%
+  summarize(
+    purchased = n()
+    ) %>%
+  arrange(desc(purchased))
+```
+
+It appears The "Fundamentals of R For Beginneers" is the most profitable book we have. While this is a very simple analysis, it is limited by:
+
+1. The size of our datset, obviously ~1794 - ~2000 books is of limited scope, and doesn't compare for example, to the catalog of Amazon.
+1. Missing data - We only have data for the states of NY, CA, TX, and FL. 
+1. Scope - We could obviously change our definition of most profitable / popular, and determine the most popular or successful book for our company a different way or with additional data.ß
+
