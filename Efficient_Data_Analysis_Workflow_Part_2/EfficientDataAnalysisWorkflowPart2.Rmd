@@ -1,0 +1,178 @@
+---
+title: "Creating An Efficient Data Analysis Workflow, Part 2"
+author: "Miguel Asse"
+date: "12/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The Problem
+
+We are taking on the role of as an analyst for a book company. The company has provided us more data on some of its 2019 book sales, and it wants us to extract some usable knowledge from it. It launched a new program encouraging customers to buy more books on July 1st, 2019, and we want to know **if this new program was successful at increasing sales and improving review quality**.
+
+## Data Exploration
+
+Let's load our dataset and look at the data quality
+
+```{r}
+library(readr)
+library(tidyverse)
+data <- read_csv("sales2019.csv")
+
+unique(data)
+```
+
+How big is the dataset?
+```{r}
+dim(data)
+```
+**Note that total purchased column contains N/As**
+
+How many NAs?
+```{r}
+colSums(is.na(data))
+```
+**There are 718 total_purchased NAs and 885 user_submitted_review NAs**
+
+What are the column names?
+```{r}
+column_names <- colnames(data)
+column_names
+```
+
+## Data Cleaning
+
+As part of our data cleaning process, we are going to:
+  1. Remove any rows with an NA value in user user_submitted_review
+  1. We'll fill in the total_purchased columns with the average number of books purchased across the entire dataset
+  1. Determine if the sentence in user_submitted review is positive or not based on the text
+
+```{r}
+clean_reviews <- data %>%
+  dplyr::filter(
+    !is.na(user_submitted_review)
+  )
+
+dim(clean_reviews)
+```
+
+As we expect, 885 rows are removed.
+
+```{r}
+average_number_of_books_purchased <- clean_reviews %>%
+  filter(
+    !is.na(total_purchased)
+  ) %>%
+  pull(total_purchased) %>%
+  mean()
+average_number_of_books_purchased
+```
+
+Let's fill in the NA values for total_purchased with our calculated mean:
+```{r}
+clean_reviews <- clean_reviews %>%
+  mutate(
+    imputed_total_purchased
+      = if_else(
+        is.na(total_purchased),
+        average_number_of_books_purchased,
+        total_purchased)
+  )
+
+head(clean_reviews, 5)
+```
+
+We see the 5th row is NA and has our imputed mean of 3.99 in the imputed_total_purchased column.
+
+Let's create a function to determine if a review is positive or negative based on the text. First let's look at the unique words in our review column:
+```{r}
+unique(clean_reviews$user_submitted_review)
+```
+Let's create our positive review function:
+```{r}
+determine_positive_review <- function(review) {
+  review_positive = case_when(
+    str_detect(review, "Awesome") ~ TRUE,
+    str_detect(review, "Never") ~ TRUE,
+    str_detect(review, "okay") ~ TRUE,
+    str_detect(review, "a lot") ~ TRUE,
+    TRUE ~ FALSE # Set any reviews outside of the above to FALSE
+  )
+}
+```
+
+And let's finally classify each review as positive or not:
+```{r}
+clean_reviews <- clean_reviews %>%
+  mutate(
+    is_positive_review = determine_positive_review(user_submitted_review)
+  )
+```
+
+Let's also clean our data column
+```{r}
+library(lubridate)
+clean_reviews$date <- mdy(clean_reviews$date)
+```
+
+Let's determine if a sale happened before or after our program started
+```{r}
+clean_reviews <- clean_reviews %>%
+  mutate(
+    sale_after_program_start = clean_reviews$date > mdy("07/01/2019")
+  )
+```
+## Answering Our Business Question
+
+Now that our data is clean, we can determine **if this new program was successful at increasing sales and improving review quality**, since we know the date of our program started on July 1, 2019 and we have the date of the sale to determine whether it happened after our program started.
+
+Overall book sales before and after the program started:
+```{r}
+book_sales_review <- clean_reviews %>%
+  group_by(sale_after_program_start) %>%
+  summarise(
+    books_purchased = sum(imputed_total_purchased))
+
+book_sales_review
+```
+
+It doesn't appear sales have increased after the program started. Is there another way to look at the data, perhaps certain titles?
+
+```{r}
+book_sales_review_by_title <- clean_reviews %>%
+  group_by(sale_after_program_start, title) %>%
+  summarise(
+    books_purchased = sum(imputed_total_purchased)) %>%
+  arrange(title, sale_after_program_start)
+book_sales_review_by_title
+```
+
+It looks like "R for Dummmies", "Secrets Of R For Advanced Students" all increased. While "R Made Easy" also increased, the number of books is so small I don't think it's significant enough to call out.
+
+Let's also determine if businesses bought more books versus individuals.
+
+```{r}
+book_sales_review_by_customer_type <- clean_reviews %>%
+  group_by(sale_after_program_start, customer_type) %>%
+  summarise(
+    books_purchased = sum(imputed_total_purchased)) %>%
+  arrange(customer_type, sale_after_program_start)
+book_sales_review_by_customer_type
+```
+
+It looks like businesses bought more books than individuals after our program started. There could be an opportunity to further market or expand the program for business customers versus individuals.
+
+Additionally, one final question is **Did review scores improve as a result of the program?**
+
+```{r}
+positive_reviews_after_program <- clean_reviews %>%
+  group_by(sale_after_program_start) %>%
+  summarise(
+    total_positive_reviews = sum(is_positive_review)) %>%
+  arrange(total_positive_reviews, sale_after_program_start)
+```
+
+While positive reviews did slightly increase, the overall effect seems minimal and the program likely did not have any effect.
