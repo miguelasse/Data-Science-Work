@@ -1,0 +1,211 @@
+---
+title: "Forest Fire Data Visualization"
+author: "Miguel Asse"
+date: "12/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Forest fires can create ecological problems and endanger human lives and
+property. Understanding when they occur and what causes them is important for
+managing them. The data we'll be working with in this guided project is
+associated with a scientific research paper on predicting the occurrence of
+forest fires in Portugal using modeling techniques. The dataset can be found
+[here](https://archive.ics.uci.edu/ml/machine-learning-databases/forest-fires/).
+
+For this project, we will simply be performing some exploratory data analysis
+using some of the libraries available in the tidyverse universe of R.
+
+## The Data
+
+Our dataset has the following fields, with definitions below:
+
+* X: X-axis spatial coordinate within the Montesinho park map: 1 to 9
+* Y: Y-axis spatial coordinate within the Montesinho park map: 2 to 9
+* month: Month of the year: 'jan' to 'dec'
+* day: Day of the week: 'mon' to 'sun'
+* FFMC: Fine Fuel Moisture Code index from the FWI system: 18.7 to 96.20
+* DMC: Duff Moisture Code index from the FWI system: 1.1 to 291.3
+* DC: Drought Code index from the FWI system: 7.9 to 860.6
+* ISI: Initial Spread Index from the FWI system: 0.0 to 56.10
+* temp: Temperature in Celsius degrees: 2.2 to 33.30
+* RH: Relative humidity in percentage: 15.0 to 100
+* wind: Wind speed in km/h: 0.40 to 9.40
+* rain: Outside rain in mm/m2 : 0.0 to 6.4
+* area: The burned area of the forest (in ha): 0.00 to 1090.84
+
+Each row represents a fire incident, including the month and day of that month, along data about each fire, based on the fields mentioned above.
+
+## Exploratory Data Analysis
+
+```{r}
+library(tidyverse)
+
+data <- read_csv("forestfires.csv")
+
+head(data)
+
+unique(data$month)
+unique(data$day)
+```
+
+Let's change the month and day to be categorical variables:
+
+```{r}
+data <- data %>%
+  mutate(
+    month_category = factor(
+      month,
+      levels=c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep",
+               "oct", "nov", "dec")),
+    day_category = factor(
+      day,
+      levels=c("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    )
+  )
+```
+
+## Data Visualization Prep
+
+In order to appropriately visualize fire frequency over time, we need to group
+our fires dataset by the month and day so we can appropriately answer questions
+such as:
+
+* What days do fires occur most frequently?
+* What months do fires occur most frequently?
+
+```{r}
+monthly_forest_fires <- data %>%
+  group_by(month_category) %>%
+  summarise(
+    number_of_fires = n()
+  )
+
+forest_fires_by_day_of_week <- data %>%
+  group_by(day_category) %>%
+  summarise(
+    number_of_fires = n()
+  )
+```   
+
+## Data Visualization
+
+### Monthly Forest Fires
+
+```{r}
+monthly_forest_fires %>%
+  ggplot(aes(x=month_category, y=number_of_fires, group=1)) +
+  theme(panel.background = element_rect(fill="white")) + 
+  geom_line() +
+  labs(
+    title="Frequency of Forest Fires By Month",
+    x="Month",
+    y="Number of Fires"
+  )
+```
+
+**It appears fires are most common in August and September.**
+
+### Forest Fires By Frequency of Day 
+
+```{r}
+forest_fires_by_day_of_week %>%
+  ggplot(aes(x=day_category, y=number_of_fires)) +
+  theme(panel.background = element_rect(fill="white")) + 
+  geom_col(fill="blue") +
+  labs(
+    title="Frequency of Forest Fires By Day",
+    x="Day",
+    y="Number of Fires"
+  )
+```
+
+**Additionally, fires are most likely to occur on Friday, Saturday, or Sunday,
+AKA the weekend.**
+
+### Further EDA Analysis
+
+Let's examine all the relationships of the other variables over time. To do that
+we need to transform our data into long format and graph all the variables
+across the month:
+
+```{r}
+data_long_format <- data %>%
+  pivot_longer(
+    cols = c("FFMC", "DMC", "DC", "ISI", "temp", "RH", "wind", "rain"),
+    names_to = "column",
+    values_to = "value"
+  )
+
+data_long_format %>%
+  ggplot(aes(x=month_category, y=value)) +
+  geom_boxplot() +
+  facet_wrap(vars(column), scales="free_y") +
+  labs(
+    title="Fire Variable Changes Over Month",
+    x="Month",
+    y="Scale"
+  )
+```
+
+**It appears DC, DMC, Temperature, and Wind all increase during the most
+frequent fire month of August.**
+
+### Examining Forest Fire Severity
+
+We don't have a variable in our data understandy how severe a forest fire was.
+However, a reasonable proxy would be to use the **area** variable to estimate
+the impact. As a reminder, the area variable is measuring the burned area of the
+forest in hectares (abbreviated as ha).
+
+```{r}
+data_long_format %>%
+  ggplot(aes(x=value, y=area)) +
+  geom_point() +
+  facet_wrap(vars(column), scales="free_x") +
+  labs(
+    title="Fire Variable Changes By Impact To Area",
+    x="Variables",
+    y="Area (Number of Hectares)"
+  )
+```
+
+Based on in initial look, it appears rain, and the initial spread (ISI) have a
+mitigating impact on the total area finally burned, which makes inherent sense.
+Additionally, as the FFMC (Fine Fuel Moisture Code) increases, so does the
+overall number of hectares burned.
+
+However, there are some outliers in our data, and the "0s" in our dataset in
+terms of area skew our data. Let's re-run our visualization without those
+outliers.
+
+```{r}
+data %>%
+  ggplot(aes(x=area, )) +
+  geom_histogram()
+```
+
+Let's re-run our above visualization, excluding 0s and area values over 150:
+
+```{r}
+data_long_format %>%
+  filter(area != 0, area <= 150) %>%
+  ggplot(aes(x=value, y=area)) +
+  geom_point() +
+  facet_wrap(vars(column), scales="free_x") +
+  labs(
+    title="Fire Variable Changes By Impact To Area",
+    x="Variables",
+    y="Area (Number of Hectares)"
+  )
+
+```
+
+Re-examining, other than FFMC, there doesn't appear to be any significant
+relationship between area and the other variables, so it appears our assumption
+around area as a proxy for forest fire severity is not a great one.
