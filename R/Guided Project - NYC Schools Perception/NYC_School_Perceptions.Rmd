@@ -1,0 +1,175 @@
+---
+title: "NYC Schools Perceptions"
+author: "Miguel Asse"
+date: "1/19/2021"
+output: html_document
+---
+
+
+## Guided Project: NYC Schools Perceptions
+
+As part of this guided project, we will have demographic and test score data from the New York City Department of Education. We'll also incorporate some additional data into our analysis: Responses to surveys designed to gauge parent, student, and teacher perceptions of the quality of New York City schools.  We'll answer the following questions:
+
+1. Do student, teacher, and parent perceptions of NYC school quality appear to be related to demographic and academic success metrics?
+1. Do students, teachers, and parents have similar perceptions of NYC school quality?
+
+The data consists of 5 files:
+1. Survey Data Dictionary.xls - Contains Metadata for the surveys
+1. masterfile11_gened_final.xlsx - Contains survey data for general education schools
+1. masterfile11_gened_final.txt - Contains survey data for general education schools
+1. masterfile11_d75_final.xlsx - Contains survey data for District 75 schools, which provide exceptional education support for children with special needs such as learning or physical disabilities.
+1. masterfile11_d75_final.txt - Contains survey data for District 75 schools, which provide exceptional education support for children with special needs such as learning or physical disabilities.
+
+## Data Importing
+
+We have received data from the Dataquest [NYC Schools Dataset](https://data.world/dataquest/nyc-schools-data/workspace/file?filename=combined.csv) and also have the 2011 Survey responses from NYC Open Data [here](https://data.cityofnewyork.us/Education/2011-NYC-School-Survey/mnz3-dyi8).
+
+We import all datasets using the read_csv and read_tsv functions, and can do data cleaning further on once the data is imported.
+
+```{r}
+library(readr)
+library(tidyverse)
+combined_school_data <- read_csv("combined_school_data.csv")
+masterfile11_gened_final <- read_tsv("masterfile11_gened_final.txt")
+masterfile11_d75_final <- read_tsv("masterfile11_d75_final.txt")
+```
+
+Looking at the data dictionary for the survey data, we can deduce the following:
+  * There's a field, "DBN" that we can join on
+  * We can filter out any elementary or middle schools using the "sch_type" field
+  * We can compare across students, teachers, and parents across Engagement, Safety & Respect, Communication, and Academic Expectations from the survey
+  
+## Data Cleaning
+
+Our survey data set contains much more data than we need to answer our questions:
+
+```{r}
+head(masterfile11_d75_final)
+```
+
+We can simplify to just include the aggregate scores across groups by high school for the general education schools:
+
+```{r}
+gen_ed_cleaned <- masterfile11_gened_final %>%
+  filter(schooltype == "High School") %>%
+  select(dbn:aca_tot_11)
+```
+
+We can also remove unnecessary granular columns for our analysis for special education schools, note that School Type in here is "District 75 Special Education", so we're unable to filter specifically by "High School" in the "schooltype" field.
+
+```{r}
+d75_cleaned <- masterfile11_d75_final %>%
+  select(dbn:aca_tot_11)
+```
+
+Let's now combine our general education and special education survey rows and rename the DBN column:
+
+```{r}
+survey_data <- bind_rows(gen_ed_cleaned, d75_cleaned) %>% rename(DBN = dbn)
+```
+
+Using the DBN column, let's combine our school survey data with the demographic data we have. We use a LEFT join to ensure not exclude any schools we may be missing data for in our analysis:
+
+```{r}
+school_and_survey_data <- left_join(combined_school_data, survey_data, by="DBN")
+```
+
+And let's rename columns with unnecessary spacing to make our analysis easier:
+
+```{r}
+school_and_survey_data <- school_and_survey_data %>%
+  rename(
+    num_of_sat_test_takers = `Num of SAT Test Takers`,
+    sat_reading_avg_score = `SAT Critical Reading Avg. Score`,
+    sat_math_avg_score = `SAT Math Avg. Score`,
+    sat_writing_avg_score = `SAT Writing Avg. Score`,
+    ap_test_takers = `AP Test Takers`,
+    total_exams_taken = `Total Exams Taken`,
+    num_exams_with_scores_3_4_or_5 = `Number of Exams with scores 3 4 or 5`,
+    total_cohort = `Total Cohort`
+    )
+```
+
+Let's see if there are any interesting patterns in our dataset via a correlation matrix:
+
+```{r}
+cor_mat <- school_and_survey_data %>%
+  select(avg_sat_score, saf_p_11:aca_tot_11) %>%
+  cor(use="pairwise.complete.obs")
+
+cor_tib <- cor_mat %>%
+  as_tibble(rownames = "variable")
+
+interesting_variables <- cor_tib %>%
+  select(variable, avg_sat_score) %>%
+  filter(avg_sat_score < -0.25 | avg_sat_score > 0.25)
+
+interesting_variables
+```
+
+Let's create a function and map out a plot of the various interesting variables
+by average SAT score:
+
+```{r}
+create_scatter_plot <- function(x, y) {
+  ggplot(data = school_and_survey_data) +
+    aes_string(x=x, y=y) +
+    geom_point(alpha=0.3) +
+    theme(panel.background = element_rect(fill = "white"))
+}
+
+x_var <- interesting_variables$variable[2:5]
+y_var <- "avg_sat_score"
+
+map2(x_var, y_var, create_scatter_plot)
+```
+
+Let's make our data longer for further analysis and add and code some new columns based
+on the responses:
+
+```{r}
+school_and_survey_longer <- school_and_survey_data %>%
+  pivot_longer(
+    cols = saf_p_11:aca_tot_11,
+    names_to = "survey_question",
+    values_to = "score"
+  )
+
+school_and_survey_longer <- school_and_survey_longer %>%
+  mutate(response_type = str_sub(survey_question, 4, 6)) %>%
+  mutate(question = str_sub(survey_question, 1, 3))
+
+school_and_survey_longer <- school_and_survey_longer %>%
+  mutate(response_type = ifelse(response_type == "_p_", "parent", 
+                                if_else(response_type == "_t_", "teacher",
+                                        if_else(response_type == "_s_", "student",
+                                                if_else(response_type == "_to", "total", "N/A")))))
+
+school_and_survey_longer <- school_and_survey_longer %>%
+  mutate(question = ifelse(question == "saf", "safety & respect", 
+                                if_else(question == "com", "communication",
+                                        if_else(question == "eng", "engagement",
+                                                if_else(question == "aca", "academic expectations", "N/A")))))
+
+```
+
+Now let's see if there's any difference between Parents, Student, and Teacher
+perceptions based on survey responses:
+
+```{r}
+school_and_survey_longer %>%
+  filter(response_type != "total") %>%
+  ggplot(aes(x=question, y=score, fill=response_type)) +
+  geom_boxplot()
+```
+
+We can deduce the following from our box plots, based on the score:
+
+1. It appears academic expectations are roughly aligned with each ohter, with the mean of all three groups coming in around ~.75
+1. Communication is scored way higher by parents than by students or teachers
+1. Parents tend to feel the most engaged, while students the least
+1. Parents also feel safety & respect is way higher, versus students and teachers.
+
+Overall it appears parents rate everything significantly higher than either
+students or teachers across academic expectations, communication, engagement and
+safety & respect.
