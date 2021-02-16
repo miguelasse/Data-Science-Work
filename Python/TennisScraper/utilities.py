@@ -33,7 +33,7 @@ def find_utr_rating(login_url, url, utr_id, utr_username, utr_password):
     import html5lib
     import selenium
     from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.firefox.options import Options
     import re
     import time
     """
@@ -53,8 +53,15 @@ def find_utr_rating(login_url, url, utr_id, utr_username, utr_password):
     """
     try:
         options = Options()
-        options.add_argument("--headless")
-        driver = webdriver.Chrome(options=options)
+        # options.add_argument("start-maximized")
+        # options.add_argument("enable-automation")
+        # options.add_argument("--no-sandbox")
+        # options.add_argument("--disable-infobars")
+        # options.add_argument("--disable-dev-shm-usage")
+        # options.add_argument("--disable-browser-side-navigation")
+        options.add_argument("--disable-gpu")
+        # options.add_argument("--headless")
+        driver = webdriver.Firefox(options=options)
         driver.get(login_url)
 
         time.sleep(1)
@@ -77,6 +84,7 @@ def find_utr_rating(login_url, url, utr_id, utr_username, utr_password):
             rating_decimal = re.findall(r"(.\d+)", str(id))[2]
             rating = rating_digit + rating_decimal
             time.sleep(1)
+            print(rating)
         return utr_id, rating
         driver.close()
     
@@ -87,9 +95,10 @@ def find_utr_rating(login_url, url, utr_id, utr_username, utr_password):
 def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_password):
     import selenium
     from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.firefox.options import Options
     from selenium.common.exceptions import NoSuchElementException
     from selenium.common.exceptions import StaleElementReferenceException
+    from selenium.common.exceptions import TimeoutException
     import re
     import time
     """
@@ -106,8 +115,10 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
     """
     options = Options()
     #options.add_argument("--headless")
-    #driver = webdriver.Chrome(options=options)
-    driver = webdriver.Chrome()
+    options.add_argument("--disable-gpu")
+    # options.add_argument("--headless")
+    driver = webdriver.Firefox(options=options)
+    #driver = webdriver.Firefox()
     driver.get(login_url)
 
     time.sleep(5)
@@ -127,14 +138,21 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
         search.send_keys(player_name)
         driver.implicitly_wait(3)
     except NoSuchElementException:
+        driver.stop_client()
+        driver.close()
         return "error on login"
-        driver.close()
     except UnboundLocalError:
+        driver.stop_client()
+        driver.close()
         return "UnboundLocalError"
-        driver.close()
     except StaleElementReferenceException:
-        return "StaleElementReferenceException"
+        driver.stop_client()
         driver.close()
+        return "StaleElementReferenceException"
+    except TimeoutException:
+        driver.stop_client()
+        driver.close()
+        return "TimeoutException"
 
     try:
         name = driver.find_element_by_class_name("globalSearch__name__3LzQY")
@@ -143,15 +161,22 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
         utr_url = driver.current_url
         utr_id = utr_url.split("/")[4]
         time.sleep(1)
+        driver.stop_client()
         driver.close()
         return player_name, utr_id
     except NoSuchElementException:
+        driver.stop_client()
+        driver.close()
         return player_name, "No UTR id found"
-        driver.close()
     except UnboundLocalError:
+        driver.stop_client()
+        driver.close()
         return "UnboundLocalError"
-        driver.close()
     except StaleElementReferenceException:
-        return "StaleElementReferenceException"
+        driver.stop_client()
         driver.close()
-    
+        return "StaleElementReferenceException"
+    except TimeoutException:
+        driver.stop_client()
+        driver.close()
+        return "TimeoutException"

@@ -69,13 +69,16 @@ for utr_id in tqdm(tennis["utr_id"]):
 
 utr_rating_df = pd.DataFrame(utr_rating, columns=["utr_id", "utr_rating"])
 
-itr_url = config["itf"]["api_url"]
+itf_url = config["itf"]["mens_api_url"]
 
 cookies_part_1 = str(input("Enter in cookies part 1:"))
 cookies_part_2 = str(input("Enter in cookies part 2:"))
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
-page = requests.get(itr_url, cookies={cookies_part_1:cookies_part_2})
+page = requests.get(itf_url, cookies={cookies_part_1:cookies_part_2}, headers=headers)
+
 soup = BeautifulSoup(page.content, "lxml")
+print(soup.text)
 site_json=json.loads(soup.text)
 
 itf_df = pd.DataFrame.from_dict(site_json["items"])
