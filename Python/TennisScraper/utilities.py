@@ -99,6 +99,7 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
     from selenium.common.exceptions import NoSuchElementException
     from selenium.common.exceptions import StaleElementReferenceException
     from selenium.common.exceptions import TimeoutException
+    from selenium.common.exceptions import WebDriverException
     import re
     import time
     """
@@ -153,6 +154,8 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
         driver.stop_client()
         driver.close()
         return "TimeoutException"
+    except WebDriverException:
+        return "WebDriverException"
 
     try:
         name = driver.find_element_by_class_name("globalSearch__name__3LzQY")
@@ -180,3 +183,6 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
         driver.stop_client()
         driver.close()
         return "TimeoutException"
+    except WebDriverException:
+        return "WebDriverException"
+

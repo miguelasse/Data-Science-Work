@@ -73,7 +73,7 @@ itf_url = config["itf"]["mens_api_url"]
 
 cookies_part_1 = str(input("Enter in cookies part 1:"))
 cookies_part_2 = str(input("Enter in cookies part 2:"))
-headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_05_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 page = requests.get(itf_url, cookies={cookies_part_1:cookies_part_2}, headers=headers)
 
