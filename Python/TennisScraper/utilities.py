@@ -132,7 +132,7 @@ def find_utr_rating_by_name(login_url, url, player_name, utr_username, utr_passw
         time.sleep(7)
         #driver.get(url)
         #driver.implicitly_wait(3)
-        search = driver.find_element_by_xpath("/html/body/div[1]/div/div/div[2]/nav/div[1]/div[2]/div/div[1]/div/input")
+        search = driver.find_element_by_xpath("/html/body/div[1]/div/div/div[3]/nav/div[1]/div[2]/div/div[1]/div[1]/input")
         time.sleep(5)
         search.click()
         driver.implicitly_wait(3)
