@@ -13,34 +13,10 @@ from utilities import find_utr_ids
 from utilities import find_utr_rating
 from utilities import find_utr_rating_by_name
 
-""" file = open("TennisScraperText.rtf", 'r')
-
-data = file.read()
-
-potential_utr_ids = []
-
-rank_pattern = r"<d2p1:Rank>(\d+)<\/d2p1:Rank>"
-birth_year_patten = r"<d2p1:BirthYear>(\d+)<\/d2p1:BirthYear>"
-family_name_pattern = r"<d2p1:PlayerFamilyName>(.+)<\/d2p1:PlayerFamilyName>"
-given_name_pattern = r"<d2p1:PlayerGivenName>(.+)<\/d2p1:PlayerGivenName>"
-rank = re.findall(rank_pattern, data)
-birth_year = re.findall(birth_year_patten, data)
-family_name = re.findall(family_name_pattern, data)
-given_name = re.findall(given_name_pattern, data)
-
-family_name = [name.replace("\\'a0", "") for name in family_name] """
-
-""" df = pd.DataFrame(list(zip(rank, birth_year, family_name, given_name)),
-               columns =['rank', 'birth_year', 'family_name', 'given_name'])
- """
-
 df = pd.read_csv("tennis_players.csv")
-
 
 print(df.shape)
 
-""" file.close()
- """
 with open(r'config.yml') as file:
     config = yaml.safe_load(file)
 
