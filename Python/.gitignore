@@ -1,0 +1,9 @@
+# DS_Store Mac Files
+../.DS_Store
+.DS_Store
+
+# TennisScraper Specific Files
+TennisScraper/.ipynb_checkpoints/
+TennisScraper/geckodriver.log
+TennisScraper/itf_df_final.csv
+TennisScraper/tennis_players.csv
